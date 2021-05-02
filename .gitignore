@@ -1,0 +1,11 @@
+*.o
+depend
+fon_prop14x16.
+front_rom8x16.c
+font_types.h
+mzapo_parlcd.h
+mzapo_parlcd.c
+mzapo_phys.c
+mzapo_phys.h
+mzapo_regs.h
+Makefile
