@@ -8,4 +8,5 @@ mzapo_parlcd.c
 mzapo_phys.c
 mzapo_phys.h
 mzapo_regs.h
+flying_letters.c
 Makefile
