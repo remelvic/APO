@@ -9,12 +9,12 @@ LDFLAGS = -lrt -lpthread
 SOURCES = change_me.c mzapo_phys.c mzapo_parlcd.c
 #SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = change_me
-#TARGET_IP ?= 192.168.202.127
+#TARGET_IP_M ?= 192.168.202.168
 ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
 $(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
-TARGET_IP ?= 192.168.202.xxx # Ip adresa MZ APO pocitace
+#TARGET_IP ?= 192.168.202.168 # Ip adresa MZ APO pocitace
 endif
 endif
 TARGET_DIR ?= /tmp/$(shell whoami)

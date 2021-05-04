@@ -28,6 +28,7 @@
 
 #define HEIGHT_SCREEN 320
 #define WIDTH_SCREEN 480
+#define M_PI 3.1415
 
 unsigned short *fb;
 
@@ -44,7 +45,7 @@ typedef struct {
 
 }stick_t;
 
-ball_t ball;     // from font_rom8x16.c 0xfe (square)
+ball_t ball_s;     // from font_rom8x16.c 0xfe (square)
 stick_t stick;   // from font_rom8x16.c 0xdb
 font_descriptor_t *fdes;
 int score[2] = {0};
@@ -52,8 +53,8 @@ int scale = 4;
 
 
 void start_game(){
-  ball.x = 320/2; // ball musi byt v centru ale nejsem si jisty 
-  ball.y = 480/2;
+  ball_s.x = 320/2; // ball musi byt v centru ale nejsem si jisty 
+  ball_s.y = 480/2;
   //ball.width = 
 }
 
@@ -63,7 +64,7 @@ unsigned int hsv2rgb_lcd(int hue, int saturation){
   hue = 240; // modry
   float f = ((hue%60)/60.0);
   int p = (255*(255-saturation))/255;           // hodnota minima
-  int q = (255*(255-(saturation*f)))/255;       // hodnota odpovida klesajicim castam
+  //int q = (255*(255-(saturation*f)))/255;       // hodnota odpovida klesajicim castam
   int t = (255*(255-(saturation*(1.0-f))))/255; // hodnota odpovida rostoucim (viz obrazek)
   unsigned int r,g,b;
   r = t; g = p; b = 255;
@@ -74,17 +75,9 @@ unsigned int hsv2rgb_lcd(int hue, int saturation){
 }
 
 
-void draw_player1_score(unsigned short color){
-
-}
-
-void draw_player2_score(unsigned short color){
-
-}
-
-void draw_number_of_strokes(){
-
-}
+void draw_player1_score(unsigned short color){}
+void draw_player2_score(unsigned short color){}
+void draw_number_of_strokes(){}
 
 void draw_pixel(int x, int y, unsigned color){
   if (x >= 0 && x < WIDTH_SCREEN && y >=0 && y < HEIGHT_SCREEN){
@@ -101,26 +94,26 @@ void draw_pixel_big(int x, int y, unsigned short color){
   }
 }
 
-int width_ball(int ch){
+int width_ball(int ball){
   int width;
   if (!fdes->width){
     width = fdes->maxwidth;
   } else {
-    width = fdes->width[ch-fdes->firstchar];
+    width = fdes->width[ball-fdes->firstchar];
   }
   return width;
 }
 
-
-void draw_ball(int x, int y, char ch, unsigned short color){
-  int w = width_ball(ch);
+//vytiskne ball na souradnice x, y barvou color
+void draw_ball(int x, int y, char ball, unsigned short color){
+  int w = width_ball(ball);
   const font_bits_t *ptr;
-  if ((ch >= fdes->firstchar) && (ch-fdes->firstchar < fdes->size)) {
+  if ((ball >= fdes->firstchar) && (ball-fdes->firstchar < fdes->size)) {
     if (fdes->offset) {
-      ptr = &fdes->bits[fdes->offset[ch-fdes->firstchar]];
+      ptr = &fdes->bits[fdes->offset[ball-fdes->firstchar]];
     } else {
       int bw = (fdes->maxwidth+15)/16;
-      ptr = &fdes->bits[(ch-fdes->firstchar)*bw*fdes->height];
+      ptr = &fdes->bits[(ball-fdes->firstchar)*bw*fdes->height];
     }
     int i, j;
     for (i=0; i<fdes->height; i++) {
@@ -137,7 +130,7 @@ void draw_ball(int x, int y, char ch, unsigned short color){
 }
 
 void draw_stick(){
-  int x;
+  //int x;
 }
 
 
@@ -166,11 +159,46 @@ int main(int argc, char *argv[])
   }
   sleep(5);
 
+  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 120 * 1000 * 1000};
   //buffer na jeden obrazek
   fb = (unsigned short *)malloc(HEIGHT_SCREEN*WIDTH_SCREEN*2);
-
+  
   // do obrazku budeme malovat
-
+  int k;
+  int ptr = 0;
+  float x = 1;
+  float y = 1;
+  char ball = '@';
+  unsigned int col = hsv2rgb_lcd(4,255);
+  for (k = 0; k <= 80; k+=5){
+    float alfa = ((10+k)*M_PI)/180.0;
+    float vx = 32*(M_PI/2.0-alfa);     //vektor rychlosti zatim stejny jako u flying_letters
+    float vy = 32*(2.0*alfa/M_PI);
+    while (x < WIDTH_SCREEN && y > 0){
+      for (ptr = 0; ptr < WIDTH_SCREEN*HEIGHT_SCREEN; ptr++){
+        fb[ptr] = 0;
+      }
+      draw_ball((int)x, 250-(int)y,ball, col);
+      x+=vx;
+      y+=vy;
+      vx = vx*0.97;
+      vy = vy*0.97 - 1.0;
+      parlcd_write_cmd(parlcd_mem_base, 0x2c);
+      for (ptr = 0; ptr < HEIGHT_SCREEN*WIDTH_SCREEN; ptr++){
+        parlcd_write_data(parlcd_mem_base, fb[ptr]);
+      }
+      clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
+    }
+  }
+  ptr = 0;
+  parlcd_write_cmd(parlcd_mem_base, 0x2c);
+  for (int i = 0; i < HEIGHT_SCREEN; i++){
+    for (int j = 0; j < WIDTH_SCREEN; j++){
+      fb[ptr] = 0;
+      parlcd_write_data(parlcd_mem_base, fb[ptr++]);
+    }
+  }
+  printf("Goodbye\n");
   /*
   draw_player1_score(color);
   draw_number_of_strokes();
