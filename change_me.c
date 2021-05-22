@@ -30,6 +30,9 @@
 #define WIDTH_SCREEN 480
 #define M_PI 3.1415
 
+
+void draw_on_screen(unsigned char *parlcd_mem_base);
+
 unsigned short *fb;
 
 typedef struct{
@@ -67,7 +70,8 @@ unsigned int hsv2rgb_lcd(int hue, int saturation){
   //int q = (255*(255-(saturation*f)))/255;       // hodnota odpovida klesajicim castam
   int t = (255*(255-(saturation*(1.0-f))))/255; // hodnota odpovida rostoucim (viz obrazek)
   unsigned int r,g,b;
-  r = t; g = p; b = 255;
+  r = g = b = 0;
+  
   r>>=3;
   g>>=2;
   b>>=3;
@@ -120,7 +124,7 @@ void draw_ball(int x, int y, char ball, unsigned short color){
       font_bits_t val = *ptr;
       for (j=0; j<w; j++) {
         if ((val&0x8000)!=0) {
-          draw_pixel_big(x+scale*j, y+scale*i, color);
+         draw_pixel_big(x+scale*j, y+scale*i, color);
         }
         val<<=1;
       }
@@ -129,14 +133,38 @@ void draw_ball(int x, int y, char ball, unsigned short color){
   }
 }
 
-void draw_stick(){
-  //int x;
+void draw_stick_and_borders( unsigned char *parlcd_mem_base){
+  for (int x = 0; x < HEIGHT_SCREEN; x++)
+{
+  for (int y = 0; y < WIDTH_SCREEN; y++)
+  {
+    if (x == 0 || x == 1|| x == HEIGHT_SCREEN -1 || x == HEIGHT_SCREEN -2 || y == 0 || y == 1 || y == WIDTH_SCREEN-1 || y == WIDTH_SCREEN-2 || y == WIDTH_SCREEN/2 || y == (WIDTH_SCREEN/2) -1)
+    {
+   fb[(x*WIDTH_SCREEN)+y] = 0xffffff; 
+    }
+    
+  }
+  }
+  
+draw_on_screen(parlcd_mem_base);
+
+ 
+
+
 }
 
+void draw_on_screen(unsigned char *parlcd_mem_base){
+     parlcd_write_cmd(parlcd_mem_base, 0x2c);
+for (size_t k = 0;  k < HEIGHT_SCREEN*WIDTH_SCREEN; k++)
+{
+  parlcd_write_data(parlcd_mem_base, fb[k]);
+}
+}
 
 
 int main(int argc, char *argv[])
 { 
+  fb = (unsigned short *)malloc(HEIGHT_SCREEN*WIDTH_SCREEN*2);
   unsigned char *parlcd_mem_base;
   int i,j; // i = 0 .. 320(height) j = 0 .. 480 
   printf("Hello\n");
@@ -154,14 +182,21 @@ int main(int argc, char *argv[])
   parlcd_write_cmd(parlcd_mem_base, 0x2c); // kdyz malovani dokonceno, zobrazime obrazek
   for(i = 0; i < HEIGHT_SCREEN; i++){
     for (j = 0; j < WIDTH_SCREEN; j++){
-      parlcd_write_data(parlcd_mem_base, hsv2rgb_lcd(j, 255)); // zobrazeni vsech pixelu
+
+      parlcd_write_data(parlcd_mem_base, hsv2rgb_lcd(j, 0)); // zobrazeni vsech pixelu
+      
+    } 
     }
-  }
+
+    draw_stick_and_borders(parlcd_mem_base);
+
+
+
+
   sleep(5);
 
   struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 120 * 1000 * 1000};
   //buffer na jeden obrazek
-  fb = (unsigned short *)malloc(HEIGHT_SCREEN*WIDTH_SCREEN*2);
   
   // do obrazku budeme malovat
   int k;
@@ -170,6 +205,7 @@ int main(int argc, char *argv[])
   float y = 1;
   char ball = '@';
   unsigned int col = hsv2rgb_lcd(4,255);
+/*
   for (k = 0; k <= 80; k+=5){
     float alfa = ((10+k)*M_PI)/180.0;
     float vx = 32*(M_PI/2.0-alfa);     //vektor rychlosti zatim stejny jako u flying_letters
@@ -189,7 +225,8 @@ int main(int argc, char *argv[])
       }
       clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
     }
-  }
+  }*/
+  
   ptr = 0;
   parlcd_write_cmd(parlcd_mem_base, 0x2c);
   for (int i = 0; i < HEIGHT_SCREEN; i++){
