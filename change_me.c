@@ -163,7 +163,7 @@ void draw_center_stick_and_borders(unsigned char *parlcd_mem_base)
     }
   }
 
-  draw_on_screen(parlcd_mem_base);
+  //draw_on_screen(parlcd_mem_base);
 }
 
 void draw_on_screen(unsigned char *parlcd_mem_base)
@@ -178,20 +178,18 @@ void draw_on_screen(unsigned char *parlcd_mem_base)
 void draw_ball(ball_t ball)
 {
   int d = 15;
- 
-  
-    for (int y = 0; y < WIDTH_SCREEN; y++)
-    {
- for (int x = 0; x < HEIGHT_SCREEN; x++)
+
+  for (int y = 0; y < WIDTH_SCREEN; y++)
+  {
+    for (int x = 0; x < HEIGHT_SCREEN; x++)
     {
       if (x >= ball.x - d && ball.x <= ball.x + d)
       {
-      double dist = sqrt((double)(x - ball.x - d / 2) * (x - ball.x - d / 2) + (y - ball.y - d / 2) * (y - ball.y - d / 2));
-      if (dist < (d / 2 + 0.5))
-      {
-        draw_pixel(x, y, hsv2rgb_lcd(255, 255, 255));
-      }
-
+        double dist = sqrt((double)(x - ball.x - d / 2) * (x - ball.x - d / 2) + (y - ball.y - d / 2) * (y - ball.y - d / 2));
+        if (dist < (d / 2 + 0.5))
+        {
+          draw_pixel(x, y, hsv2rgb_lcd(255, 255, 255));
+        }
       }
     }
   }
@@ -202,98 +200,124 @@ _Bool move_ball(ball_t *ball)
   if ((*ball).x == 0)
   {
     printf("edge y\n!");
-      ball->speed_x *= -1;
+    ball->speed_x *= -1;
   }
-  else if((*ball).x == HEIGHT_SCREEN-20){
+  else if ((*ball).x == HEIGHT_SCREEN - 20)
+  {
     ball->speed_x *= -1;
   }
 
-  else if((*ball).y == 0 || (*ball).y == WIDTH_SCREEN){
+  else if ((*ball).y == 0 || (*ball).y == WIDTH_SCREEN)
+  {
     return true;
   }
   else
-      printf("else!\n");
-   
+    printf("else!\n");
+
   ball->x += ball->speed_x;
   ball->y += ball->speed_y;
   return false;
 }
 
-
-
-void clear_map(int ptr, unsigned char *parlcd_mem_base)
+void draw_stick(stick_t stick)
 {
-  for (int i = 0; i < HEIGHT_SCREEN; i++)
+  for (int y = 0; y< WIDTH_SCREEN; y++)
   {
-    for (int j = 0; j < WIDTH_SCREEN; j++)
+    for (int x = 0; x < HEIGHT_SCREEN; x++)
     {
-      draw_pixel(i, j, hsv2rgb_lcd(255, 255, 0));
+      if ((x >= stick.x && y >= stick.y && x <= stick.x + stick.height && y <= stick.y + stick.width))
+      {
+        draw_pixel(x, y, hsv2rgb_lcd(255, 255, 255));
+      }
     }
   }
 }
 
-int main(int argc, char *argv[])
-{
+  void clear_map(int ptr, unsigned char *parlcd_mem_base)
+  {
+    for (int i = 0; i < HEIGHT_SCREEN; i++)
+    {
+      for (int j = 0; j < WIDTH_SCREEN; j++)
+      {
+        draw_pixel(i, j, hsv2rgb_lcd(255, 255, 0));
+      }
+    }
+  }
 
-  /*if (serialize_lock(1) <= 0) {
+  int main(int argc, char *argv[])
+  {
+
+    /*if (serialize_lock(1) <= 0) {
     printf("System is occupied\n");
 
     if (1) {
       printf("Waitting\n");
       /* Wait till application holding lock releases it or exits */
-  /*    serialize_lock(0);
+    /*    serialize_lock(0);
     }
   }*/
-  ball_t ball;
-  ball.x = HEIGHT_SCREEN / 2;
-  ball.y = WIDTH_SCREEN / 2;
-  ball.speed_x = 2;
-  ball.speed_y = 2;
-  printf("%d, %d\n", ball.x, ball.y);
+    ball_t ball;
+    ball.x = HEIGHT_SCREEN / 2;
+    ball.y = WIDTH_SCREEN / 2;
+    ball.speed_x = 2;
+    ball.speed_y = 2;
 
-  fb = (unsigned short *)malloc(HEIGHT_SCREEN * WIDTH_SCREEN * 2);
-  unsigned char *parlcd_mem_base;
-  int i, j; // i = 0 .. 320(height) j = 0 .. 480
-  printf("Hello\n");
+    stick_t stick_player1;
+    stick_player1.x = 100;
+    stick_player1.y = 20;
+    stick_player1.width = 4;
+    stick_player1.height = 100;
 
-  //mapovani fizicke pameti do Virtualniho prostoru
-  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
-  if (parlcd_mem_base == NULL)
-  {
-    fprintf(stderr, "Mapping fails!\n");
-    exit(1);
-  }
+    stick_t stick_player2;
+    stick_player2.x = 100;
+    stick_player2.y = 460;
+    stick_player2.width = 4;
+    stick_player2.height = 100;
 
-  //cerny obrazek?
+    fb = (unsigned short *)malloc(HEIGHT_SCREEN * WIDTH_SCREEN * 2);
+    unsigned char *parlcd_mem_base;
+    int i, j; // i = 0 .. 320(height) j = 0 .. 480
+    printf("Hello\n");
 
-  draw_center_stick_and_borders(parlcd_mem_base);
+    //mapovani fizicke pameti do Virtualniho prostoru
+    parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
+    if (parlcd_mem_base == NULL)
+    {
+      fprintf(stderr, "Mapping fails!\n");
+      exit(1);
+    }
 
-  draw_ball(ball);
+    //cerny obrazek?
 
-  int ptr = 0;
-  _Bool out_of_board = false;
- while (out_of_board == false)
- {
-    out_of_board = move_ball(&ball);
-    clear_map(ptr, parlcd_mem_base);
     draw_center_stick_and_borders(parlcd_mem_base);
+
     draw_ball(ball);
-    draw_on_screen(parlcd_mem_base);
-    printf("%d***%d\n", ball.x, ball.y);
-  
- }
-  sleep(5);
 
-  struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 120 * 1000 * 1000};
-  //buffer na jeden obrazek
+    int ptr = 0;
+    _Bool out_of_board = false;
+    while (out_of_board == false)
+    {
+      out_of_board = move_ball(&ball);
+      clear_map(ptr, parlcd_mem_base);
+      draw_center_stick_and_borders(parlcd_mem_base);
+      draw_stick(stick_player1);
+      draw_stick(stick_player2);
+      draw_ball(ball);
+      draw_on_screen(parlcd_mem_base);
+      printf("%d***%d\n", ball.x, ball.y);
+    }
+    sleep(5);
 
-  // do obrazku budeme malovat
-  int k;
-  float x = 1;
-  float y = 1;
-  unsigned int col = 0xffffff;
+    struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 120 * 1000 * 1000};
+    //buffer na jeden obrazek
 
-  /*
+    // do obrazku budeme malovat
+    int k;
+    float x = 1;
+    float y = 1;
+    unsigned int col = 0xffffff;
+
+    /*
 
   for (k = 0; k <= 80; k+=5){
     float alfa = ((10+k)*M_PI)/180.0;
@@ -316,11 +340,11 @@ int main(int argc, char *argv[])
     }
   }*/
 
-  clear_map(ptr, parlcd_mem_base);
-  draw_on_screen(parlcd_mem_base);
+    clear_map(ptr, parlcd_mem_base);
+    draw_on_screen(parlcd_mem_base);
 
-  printf("Goodbye\n");
-  /*
+    printf("Goodbye\n");
+    /*
   draw_player1_score(color);
   draw_number_of_strokes();
   draw_player2_score(color);
@@ -328,6 +352,6 @@ int main(int argc, char *argv[])
   draw_ball();
   */
 
-  //serialize_unlock();
-  return 0;
-}
+    //serialize_unlock();
+    return 0;
+  }
