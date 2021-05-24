@@ -22,6 +22,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdbool.h>
+#include <string.h>
+#include <termios.h>
 
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
@@ -66,15 +68,35 @@ void start_game()
   //ball.width =
 }
 
+void init_termios(){
+   static struct termios oldt, newt;
+
+ /*tcgetattr gets the parameters of the current terminal
+     STDIN_FILENO will tell tcgetattr that it should write the settings
+    of stdin to oldt*/
+  tcgetattr( STDIN_FILENO, &oldt);
+    /*now the settings will be copied*/
+  newt = oldt;
+
+    /*ICANON normally takes care that one line at a time will be processed
+    that means it will return if it sees a "\n" or an EOF or an EOL*/
+  newt.c_lflag &= ~(ICANON);
+  newt.c_cc[VMIN] = 0; // bytes until read unblocks.
+  newt.c_cc[VTIME] = 0;
+
+    /*Those new settings will be set to STDIN
+    TCSANOW tells tcsetattr to change attributes immediately. */
+  tcsetattr( STDIN_FILENO, TCSANOW, &newt);
+}
 // value == jasnost vzdy const 255
 // hue mozna taky const
 unsigned int hsv2rgb_lcd(int hue, int saturation, int color)
 {
   hue = 240; // modry
   float f = ((hue % 60) / 60.0);
-  int p = (255 * (255 - saturation)) / 255; // hodnota minima
+  //int p = (255 * (255 - saturation)) / 255; // hodnota minima
   //int q = (255*(255-(saturation*f)))/255;       // hodnota odpovida klesajicim castam
-  int t = (255 * (255 - (saturation * (1.0 - f)))) / 255; // hodnota odpovida rostoucim (viz obrazek)
+  //int t = (255 * (255 - (saturation * (1.0 - f)))) / 255; // hodnota odpovida rostoucim (viz obrazek)
   unsigned int r, g, b;
   r = g = b = color;
 
@@ -157,13 +179,10 @@ void draw_center_stick_and_borders(unsigned char *parlcd_mem_base)
     {
       if (x == 0 || x == 1 || x == HEIGHT_SCREEN - 1 || x == HEIGHT_SCREEN - 2 || y == 0 || y == 1 || y == WIDTH_SCREEN - 1 || y == WIDTH_SCREEN - 2 || y == (WIDTH_SCREEN + 1) / 2 || y == ((WIDTH_SCREEN + 1) / 2) - 1 || y == ((WIDTH_SCREEN + 1) / 2) + 1)
       {
-        //fb[(x*WIDTH_SCREEN)+y] = hsv2rgb_lcd(100,100);
         draw_pixel(x, y, hsv2rgb_lcd(255, 255, 255));
       }
     }
   }
-
-  //draw_on_screen(parlcd_mem_base);
 }
 
 void draw_on_screen(unsigned char *parlcd_mem_base)
@@ -175,6 +194,7 @@ void draw_on_screen(unsigned char *parlcd_mem_base)
   }
 }
 
+//draw ball on screen
 void draw_ball(ball_t ball)
 {
   int d = 15;
@@ -195,33 +215,35 @@ void draw_ball(ball_t ball)
   }
 }
 
-_Bool move_ball(ball_t *ball)
+_Bool move_ball(ball_t *ball, stick_t player1, stick_t player2)
 {
-  if ((*ball).x == 0)
+  if ((*ball).x <= 0) //up
   {
-    printf("edge y\n!");
     ball->speed_x *= -1;
   }
-  else if ((*ball).x == HEIGHT_SCREEN - 20)
+  else if ((*ball).x >= HEIGHT_SCREEN - 20) //down
   {
     ball->speed_x *= -1;
   }
 
-  else if ((*ball).y == 0 || (*ball).y == WIDTH_SCREEN)
+  else if ((*ball).y <= 0 || (*ball).y >= WIDTH_SCREEN) // sides
   {
     return true;
   }
-  else
-    printf("else!\n");
+  else if (((*ball).y <= player1.y + player1.width && (*ball).x >= player1.x && (*ball).x <= player1.x + player1.height) || ((*ball).y >= player2.y - 20 && (*ball).x >= player2.x && (*ball).x <= player2.x + player2.height))
+  { // player stick
+    ball->speed_y *= -1;
+  }
 
   ball->x += ball->speed_x;
   ball->y += ball->speed_y;
   return false;
 }
 
+//draw players sticks
 void draw_stick(stick_t stick)
 {
-  for (int y = 0; y< WIDTH_SCREEN; y++)
+  for (int y = 0; y < WIDTH_SCREEN; y++)
   {
     for (int x = 0; x < HEIGHT_SCREEN; x++)
     {
@@ -233,91 +255,187 @@ void draw_stick(stick_t stick)
   }
 }
 
-  void clear_map(int ptr, unsigned char *parlcd_mem_base)
+void move_stick(stick_t *stick, int direction){
+  stick->x += 5*direction;
+}
+
+size_t char_offset(font_descriptor_t *fdes, char ch)
+{
+  if ((ch >= fdes->firstchar) && ((ch - fdes->firstchar) < fdes->size))
   {
-    for (int i = 0; i < HEIGHT_SCREEN; i++)
+    return (ch - fdes->firstchar) * fdes->height;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+void draw_char(int x, int y, font_descriptor_t *fdes, char ch)
+{
+  int width = char_width(fdes, ch);
+  int height = fdes->height;
+  size_t bitmap_offset = char_offset(fdes, ch);
+  int lcd_row = y;
+  for (int font_row = 0; font_row < height; font_row++)
+  {
+    uint16_t bits = *(fdes->bits + bitmap_offset + font_row);
+    for (int rs = 0; rs < scale; rs++)
     {
-      for (int j = 0; j < WIDTH_SCREEN; j++)
+      int lcd_col = x;
+      for (int font_col = 0; font_col < width; font_col++)
       {
-        draw_pixel(i, j, hsv2rgb_lcd(255, 255, 0));
+        int draw = (bits << font_col) & 0x8000;
+        for (int cs = 0; cs < scale; cs++)
+        {
+          if (draw)
+            draw_pixel(lcd_col, lcd_row, hsv2rgb_lcd(255, 255, 255));
+          lcd_col++;
+        }
       }
+      lcd_row++;
     }
   }
-
-  int main(int argc, char *argv[])
+}
+void draw_text(char *str, int x, int y, font_descriptor_t *fdes)
+{
+  for (int i = 0; i < strlen(str); i++)
   {
+    draw_char(x, y, fdes, str[i]);
+    x += char_width(fdes, str[i]);
+  }
+}
 
-    /*if (serialize_lock(1) <= 0) {
+int char_width(font_descriptor_t *fdes, int ch)
+{
+  int width = 0;
+  if ((ch >= fdes->firstchar) && (ch - fdes->firstchar < fdes->size))
+  {
+    ch -= fdes->firstchar;
+    if (!fdes->width)
+    {
+      width = fdes->maxwidth;
+    }
+    else
+    {
+      width = fdes->width[ch];
+    }
+  }
+  return width;
+}
+
+void clear_map(int ptr, unsigned char *parlcd_mem_base)
+{
+  for (int i = 0; i < HEIGHT_SCREEN; i++)
+  {
+    for (int j = 0; j < WIDTH_SCREEN; j++)
+    {
+      draw_pixel(i, j, hsv2rgb_lcd(255, 255, 0));
+    }
+  }
+}
+
+
+int main(int argc, char *argv[])
+{
+  
+
+  /*if (serialize_lock(1) <= 0) {
     printf("System is occupied\n");
 
     if (1) {
       printf("Waitting\n");
-      /* Wait till application holding lock releases it or exits */
+       Wait till application holding lock releases it or exits 
     /*    serialize_lock(0);
     }
   }*/
-    ball_t ball;
-    ball.x = HEIGHT_SCREEN / 2;
-    ball.y = WIDTH_SCREEN / 2;
-    ball.speed_x = 2;
-    ball.speed_y = 2;
+  ball_t ball;
+  ball.x = HEIGHT_SCREEN / 2;
+  ball.y = WIDTH_SCREEN / 2;
+  ball.speed_x = 2;
+  ball.speed_y = 2;
 
-    stick_t stick_player1;
-    stick_player1.x = 100;
-    stick_player1.y = 20;
-    stick_player1.width = 4;
-    stick_player1.height = 100;
+  stick_t stick_player1;
+  stick_player1.x = 100;
+  stick_player1.y = 20;
+  stick_player1.width = 4;
+  stick_player1.height = 100;
 
-    stick_t stick_player2;
-    stick_player2.x = 100;
-    stick_player2.y = 460;
-    stick_player2.width = 4;
-    stick_player2.height = 100;
+  stick_t stick_player2;
+  stick_player2.x = 100;
+  stick_player2.y = 460;
+  stick_player2.width = 4;
+  stick_player2.height = 100;
 
-    fb = (unsigned short *)malloc(HEIGHT_SCREEN * WIDTH_SCREEN * 2);
-    unsigned char *parlcd_mem_base;
-    int i, j; // i = 0 .. 320(height) j = 0 .. 480
-    printf("Hello\n");
+  fb = (unsigned short *)malloc(HEIGHT_SCREEN * WIDTH_SCREEN * 2);
+  unsigned char *parlcd_mem_base;
+  //int i, j; // i = 0 .. 320(height) j = 0 .. 480
+  printf("Hello\n");
 
-    //mapovani fizicke pameti do Virtualniho prostoru
-    parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
-    if (parlcd_mem_base == NULL)
+  //mapovani fizicke pameti do Virtualniho prostoru
+  parlcd_mem_base = map_phys_address(PARLCD_REG_BASE_PHYS, PARLCD_REG_SIZE, 0);
+  if (parlcd_mem_base == NULL)
+  {
+    fprintf(stderr, "Mapping fails!\n");
+    exit(1);
+  }
+
+  //side border and stick in middle
+  draw_center_stick_and_borders(parlcd_mem_base);
+  //ball on screen
+  draw_ball(ball);
+
+  int ptr = 0;
+  _Bool out_of_board = false;
+  char c;
+  init_termios();
+  int cfmakeraw(struct termios *termios_p);
+  while (out_of_board == false && c != 113) // q ukonci hru
+  {
+    clear_map(ptr, parlcd_mem_base);
+    int ret = read(0, &c, 1);
+    if (c == 119) //klavesa 'w'
     {
-      fprintf(stderr, "Mapping fails!\n");
-      exit(1);
+    //printf("1. %d\n",ret);
+      move_stick(&stick_player1,-1);
+      move_stick(&stick_player2,-1);
+
+      c=0;
     }
+    if (c == 115) //klavesa 's'
+    {
+      //    printf("2. %d\n",ret);
+     move_stick(&stick_player1,1);
+     move_stick(&stick_player2,1);
 
-    //cerny obrazek?
+    c=0;
+    }
+   if (ret==0){
+        // printf("3. %d\n",ret);
 
+     move_stick(&stick_player1,0);
+     move_stick(&stick_player2,0);
+   }
+     draw_stick(stick_player1);
+     draw_stick(stick_player2);
+    
+    out_of_board = move_ball(&ball, stick_player1, stick_player2);
     draw_center_stick_and_borders(parlcd_mem_base);
-
+     
     draw_ball(ball);
+    draw_on_screen(parlcd_mem_base);
+  }
 
-    int ptr = 0;
-    _Bool out_of_board = false;
-    while (out_of_board == false)
-    {
-      out_of_board = move_ball(&ball);
-      clear_map(ptr, parlcd_mem_base);
-      draw_center_stick_and_borders(parlcd_mem_base);
-      draw_stick(stick_player1);
-      draw_stick(stick_player2);
-      draw_ball(ball);
-      draw_on_screen(parlcd_mem_base);
-      printf("%d***%d\n", ball.x, ball.y);
-    }
-    sleep(5);
+  //    struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 120 * 1000 * 1000};
+  //buffer na jeden obrazek
 
-    struct timespec loop_delay = {.tv_sec = 0, .tv_nsec = 120 * 1000 * 1000};
-    //buffer na jeden obrazek
+  // do obrazku budeme malovat
+  //  int k;
+  //  float x = 1;
+  // float y = 1;
+  //unsigned int col = 0xffffff;
 
-    // do obrazku budeme malovat
-    int k;
-    float x = 1;
-    float y = 1;
-    unsigned int col = 0xffffff;
-
-    /*
+  /*
 
   for (k = 0; k <= 80; k+=5){
     float alfa = ((10+k)*M_PI)/180.0;
@@ -339,12 +457,20 @@ void draw_stick(stick_t stick)
       clock_nanosleep(CLOCK_MONOTONIC, 0, &loop_delay, NULL);
     }
   }*/
+  clear_map(ptr, parlcd_mem_base);
 
-    clear_map(ptr, parlcd_mem_base);
-    draw_on_screen(parlcd_mem_base);
+  int p = 10;
+  char str[] = "Goodbye world";
+  char *ch = str;
+  fdes = &font_winFreeSystem14x16;
+  //draw_text(ch, 0, 0, fdes );
 
-    printf("Goodbye\n");
-    /*
+  draw_on_screen(parlcd_mem_base);
+  sleep(5);
+  clear_map(ptr, parlcd_mem_base);
+  draw_on_screen(parlcd_mem_base);
+  printf("Goodbye\n");
+  /*
   draw_player1_score(color);
   draw_number_of_strokes();
   draw_player2_score(color);
@@ -352,6 +478,6 @@ void draw_stick(stick_t stick)
   draw_ball();
   */
 
-    //serialize_unlock();
-    return 0;
-  }
+  //serialize_unlock();
+  return 0;
+}
