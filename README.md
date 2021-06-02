@@ -108,12 +108,11 @@ Function `void draw_text(char *str, int x, int y, font_descriptor_t *fdes)`
 Function `int char_width(font_descriptor_t *fdes, int ch)`
  * The function determines the width of the selected character based on the "stock" of representations fdes
 > * **Parameter** fdes - "storage" of representations of our symbols
-> * **Parameter** ch = character
+> * **Parameter** ch - character
 > * **Return** the width of our character
 
 Function `void clear_map(int ptr, unsigned char *parlcd_mem_base)`
  * The function clears the screen after finishing the game (After pressing the q button)
-> * **Parameter** ptr
 > * **Parameter** parlcd_mem_base
 
 Function `int main(int argc, char *argv[])`
