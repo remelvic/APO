@@ -24,18 +24,31 @@
 #include <stdbool.h>
 #include <string.h>
 #include <termios.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <strings.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 
 #include "mzapo_parlcd.h"
 #include "mzapo_phys.h"
 #include "mzapo_regs.h"
 #include "font_types.h"
-#include "serialize_lock.h"
+//#include "serialize_lock.h"
 
 #define HEIGHT_SCREEN 320
 #define WIDTH_SCREEN 480
 #define M_PI 3.1415
+#define PORT 8088
+#define SA struct sockaddr
 
 void draw_on_screen(unsigned char *parlcd_mem_base);
+void tcp_implements_server(int sockfd);
+void tcp_connect_server();
+void tcp_implements_client(int sockfd);
+void tcp_connect_client();
+int char_width(font_descriptor_t *fdes, int ch);
 
 unsigned short *fb;
 
@@ -270,6 +283,19 @@ void move_stick(stick_t *stick, int direction){
   stick->x += 5*direction;
 }
 
+size_t char_offset(font_descriptor_t *fdes, char ch)
+{
+  if ((ch >= fdes->firstchar) && ((ch - fdes->firstchar) < fdes->size))
+  {
+    return (ch - fdes->firstchar) * fdes->height;
+  }
+  else
+  {
+    return 0;
+  }
+}
+
+
 /**
  * The function draws the character ch at x and y coordinates
  *
@@ -364,6 +390,136 @@ void clear_map(unsigned char *parlcd_mem_base)
   }
 }
 
+void tcp_implements_server(int sockfd){
+  char buff[80];
+  int n;
+  int ret;
+  //infinite loop while(true)
+  for(;;){
+    bzero(buff, 80);
+    ret = read(sockfd, buff, sizeof(buff));
+    if(ret == -1) printf("Failed read. In line %d , in file %s\n", __LINE__, __FILE__);
+
+    bzero(buff, 80);
+    n = 0;
+    while((buff[n++] = getchar()) != '\n');
+    ret = write(sockfd, buff, sizeof(buff));
+    if(ret == -1) printf("Failed write. In line %d , in file %s\n", __LINE__, __FILE__);
+
+    if (strncmp("exit", buff, 4) == 0){
+      printf("Server Exit...\n");
+      break;
+    }
+  }
+}
+
+void tcp_connect_server(){
+  int sockfd, connfd; //len;
+  struct sockaddr_in servaddr, cli;
+  socklen_t len;
+
+  sockfd = socket(AF_INET, SOCK_STREAM,0);
+  if (sockfd == -1){
+    printf("socket creation failed...\n");
+    exit(0);
+  }else {
+    printf("Socket successfully created..\n");
+  }
+  bzero(&servaddr, sizeof(servaddr));
+
+  //assign IP,PORT
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  servaddr.sin_port = htons(PORT);
+
+  if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0){
+    printf("socket bind failed...\n");
+    exit(0);
+  }
+  else{
+    printf("Socket successfully binded...\n");
+  }
+
+  if ((listen(sockfd, 5)) != 0){
+    printf("Listen failed...\n");
+    exit(0);
+  }else {
+    printf("Server listening..\n");
+  }
+  len = sizeof(cli);
+
+  //accept the data packet from client and verification
+  connfd = accept(sockfd, (SA*)&cli, &len);
+  if (connfd < 0){
+    printf("Server accept failed...\n");
+    exit(0);
+  } else{
+    printf("Server accept the client..\n");
+  }
+
+  tcp_implements_server(connfd);
+
+  close(sockfd);
+
+}
+
+void tcp_implements_client(int sockfd){
+  char buff[80];
+  int n;
+  int ret;
+
+  for(;;){
+    bzero(buff, sizeof(buff));
+    printf("Enter the string: ");
+    n  = 0;
+    while((buff[n++] = getchar()) != '\n');
+    
+    ret = write(sockfd, buff, sizeof(buff));
+    if(ret == -1) printf("Failed write. In line %d , in file %s\n", __LINE__, __FILE__);
+
+    bzero(buff, sizeof(buff));
+    
+    ret = read(sockfd, buff, sizeof(buff));
+    if(ret == -1) printf("Failed read. In line %d , in file %s\n", __LINE__, __FILE__);
+
+    printf("From Server: %s", buff);
+    if ((strncmp(buff, "exit", 4)) == 0){
+      printf("Client Exut...\n");
+      break;
+    }
+  }
+}
+
+void tcp_connect_client(){
+  int sockfd;
+  struct sockaddr_in servaddr;
+
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd == -1){
+    printf("Socket creation failed..\n");
+    exit(0);
+  } else {
+    printf("Socket successfully created..\n");
+  }
+  bzero(&servaddr, sizeof(servaddr));
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+  servaddr.sin_port = htons(PORT);
+
+  if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0){
+    printf("Connection with the server failed..\n");
+    exit(0);
+  } else {
+    printf("Connected to the server..\n");
+  }
+
+  tcp_implements_client(sockfd);
+
+  close(sockfd);
+
+}
+
+
 /**
  * The main function that launches our game
  */
@@ -377,7 +533,7 @@ int main(int argc, char *argv[])
     if (1) {
       printf("Waitting\n");
        Wait till application holding lock releases it or exits 
-    /*    serialize_lock(0);
+        serialize_lock(0);
     }
   }*/
   ball_t ball;
@@ -469,12 +625,13 @@ int main(int argc, char *argv[])
   
   clear_map(parlcd_mem_base);
 
+  /*
   int p = 10;
-  char str[] = "Goodbye world";
-  char *ch = str;
-  fdes = &font_winFreeSystem14x16;
-  //draw_text(ch, 0, 0, fdes );
-
+  //char str[] = "Goodbye world";
+  //char *ch = str;
+  //fdes = &font_winFreeSystem14x16;
+  draw_text(ch, 0, 0, fdes );
+  */
   draw_on_screen(parlcd_mem_base);
   sleep(5);
   clear_map(parlcd_mem_base);
