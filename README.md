@@ -108,7 +108,11 @@ Function `void draw_text(char *str, int x, int y, font_descriptor_t *fdes)`
 Function `int char_width(font_descriptor_t *fdes, int ch)`
  * The function determines the width of the selected character based on the "stock" of representations fdes
 > * **Parameter** fdes - "storage" of representations of our symbols
+<<<<<<< HEAD
 > * **Parameter** ch -git  character
+=======
+> * **Parameter** ch - character
+>>>>>>> 783b3b963c18f8bd767fa85a45e6685d53b75980
 > * **Return** the width of our character
 
 Function `void clear_map(int ptr, unsigned char *parlcd_mem_base)`
