@@ -6,15 +6,15 @@ CFLAGS =-g -std=gnu99 -O1 -Wall
 CXXFLAGS = -g -std=gnu++11 -O1 -Wall
 LDFLAGS = -lrt -lpthread
 
-SOURCES = pong.c mzapo_phys.c mzapo_parlcd.c
+SOURCES = pong.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c
 #SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = pong
-TARGET_IP ?= 192.168.202.216
+TARGET_IP ?= 192.168.202.207
 ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
 $(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
-TARGET_IP ?= 192.168.202.216 # Ip adresa MZ APO pocitace
+TARGET_IP ?= 192.168.202.207 # Ip adresa MZ APO pocitace
 endif
 endif
 TARGET_DIR ?= /tmp/$(shell whoami)

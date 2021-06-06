@@ -8,6 +8,9 @@ The theme of our semester work is **Pong**
 ## Name of participants:
 Daniel Koval, Victor Remel
 
+## Platforms used:
+Github: https://github.com/remelvic/APO
+
 <h1 align="Center">User Manual</h1>
 
 ## How to play 
@@ -28,6 +31,7 @@ The rules are the same as in the normal game, the controls are as follows: about
 
 <h1 align="Center">For the Developer</h1>
 
+
 Function `void draw_on_screen(unsigned char *parlcd_mem_base)` 
  * Lets us draw on the screen
 >   * **Parameter** parlcd_mem_base
@@ -38,8 +42,8 @@ Function `void init_termios()`
 Function `unsigned int hsv2rgb_lcd(int hue, int saturation, int color)`
  * This function works with the color of our elements (sticks and ball)
 
->   * **Parameter** hue - always 255
->   * **Parameter** saturation - always 255
+>   * ~~**Parameter** hue - always 255~~
+>   * ~~**Parameter** saturation - always 255~~
 >   * **Parameter** color
 >   * **Return** color
 
@@ -67,7 +71,7 @@ Function `void draw_pixel_big(int x, int y, unsigned short color)`
 Function `void draw_center_stick_and_borders(unsigned char *parlcd_mem_base)`
  * The function will draw a center line and sticks on the left and right side
 
-> * **Parameter** parlcd_mem_base
+> * ~~**Parameter** parlcd_mem_base~~
 
 Function `void draw_ball(ball_t ball)`
  * The function draws a ball on the screen
@@ -108,16 +112,13 @@ Function `void draw_text(char *str, int x, int y, font_descriptor_t *fdes)`
 Function `int char_width(font_descriptor_t *fdes, int ch)`
  * The function determines the width of the selected character based on the "stock" of representations fdes
 > * **Parameter** fdes - "storage" of representations of our symbols
-<<<<<<< HEAD
-> * **Parameter** ch -git  character
-=======
 > * **Parameter** ch - character
->>>>>>> 783b3b963c18f8bd767fa85a45e6685d53b75980
 > * **Return** the width of our character
 
 Function `void clear_map(int ptr, unsigned char *parlcd_mem_base)`
  * The function clears the screen after finishing the game (After pressing the q button)
-> * **Parameter** parlcd_mem_base
+> * ~~**Parameter** parlcd_mem_base~~
 
 Function `int main(int argc, char *argv[])`
  * The main function that launches our game
+

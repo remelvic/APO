@@ -9,4 +9,10 @@ mzapo_phys.c
 mzapo_phys.h
 mzapo_regs.h
 flying_letters.c
-Makefile
+documentation.docx
+documentation.zip
+pong_for_left(player1).c
+pong_for_right(player2).c
+connected.c
+client
+mzapo-root-key
