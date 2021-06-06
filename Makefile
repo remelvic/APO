@@ -9,12 +9,12 @@ LDFLAGS = -lrt -lpthread
 SOURCES = pong.c mzapo_phys.c mzapo_parlcd.c serialize_lock.c
 #SOURCES += font_prop14x16.c font_rom8x16.c
 TARGET_EXE = pong
-TARGET_IP ?= 192.168.202.207
+TARGET_IP ?= 192.168.202.175
 ifeq ($(TARGET_IP),)
 ifneq ($(filter debug run,$(MAKECMDGOALS)),)
 $(warning The target IP address is not set)
 $(warning Run as "TARGET_IP=192.168.202.xxx make run" or modify Makefile)
-TARGET_IP ?= 192.168.202.207 # Ip adresa MZ APO pocitace
+TARGET_IP ?= 192.168.202.175 # Ip adresa MZ APO pocitace
 endif
 endif
 TARGET_DIR ?= /tmp/$(shell whoami)
@@ -22,7 +22,7 @@ TARGET_USER ?= root
 # for use from Eduroam network use TARGET_IP=localhost and enable next line
 #SSH_OPTIONS=-o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -o "Port=2222"
 #SSH_OPTIONS=-i /opt/zynq/ssh-connect/mzapo-root-key
-#SSH_OPTIONS=-o 'ProxyJump=remelvic@postel.felk.cvut.cz'
+#SSH_OPTIONS=-o 'ProxyJump=kovalda2@postel.felk.cvut.cz'
 
 OBJECTS += $(filter %.o,$(SOURCES:%.c=%.o))
 OBJECTS += $(filter %.o,$(SOURCES:%.cpp=%.o))
